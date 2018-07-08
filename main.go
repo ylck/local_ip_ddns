@@ -101,6 +101,6 @@ func DDNS(new_ip string) {
 
 func main() {
 	var ip = getip().Ip
-	gocron.Every(1).Seconds().Do(DDNS, ip)
+	gocron.Every(5).Minutes().Do(DDNS, ip)
 	<-gocron.Start()
 }
