@@ -10,5 +10,5 @@ ENV CF_API_KEY=1
 ENV CF_API_EMAIL=2
 ENV zone_name=ylck.me
 ENV sld_name=unraid
-ENV nic_name=br0
+ENV nic_name=br1
 CMD ["local_ddns"]
