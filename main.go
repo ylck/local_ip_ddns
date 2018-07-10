@@ -3,6 +3,7 @@ package main
 import (
 	"net"
 	"os"
+	"strconv"
 
 	cloudflare "github.com/cloudflare/cloudflare-go"
 	"github.com/jasonlvhit/gocron"
@@ -14,7 +15,7 @@ type Hostinfo struct {
 	Ip       string
 }
 
-var ips string
+var ips, id, ip string
 
 func init() {
 	//设置最低loglevel
@@ -43,7 +44,7 @@ func getip() *Hostinfo {
 	}
 
 	addresses, err := byNameInterface.Addrs()
-	log.Info(addresses)
+	log.Debug(addresses)
 
 	for _, v := range addresses {
 		if ipnet, ok := v.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
@@ -72,35 +73,44 @@ func DDNS(new_ip string) {
 	}
 	// zone_name :  ylck.me
 	zoneID, err := api.ZoneIDByName(os.Getenv("zone_name"))
+	log.Info(zoneID)
 	if err != nil {
 		log.Fatal(err)
 	}
 	// Name: unraid.ylck.me
-	foo := cloudflare.DNSRecord{Name: os.Getenv("sld_name") + os.Getenv("zone_name")}
+	foo := cloudflare.DNSRecord{Name: os.Getenv("sld_name") + "." + os.Getenv("zone_name")}
+	log.Debugf("%s", foo)
 	recs, err := api.DNSRecords(zoneID, foo)
 	if err != nil {
 		log.Fatal(err)
 	}
-	var id, ip string
-
 	for _, r := range recs {
-
 		id = r.ID
 		ip = r.Content
-		log.Printf(id, ip)
+		log.Debug(id, ip)
 	}
+
 	if new_ip != ip {
 		// Fetch all records for a zone
+		log.Info(zoneID, id, new_ip)
 		err = api.UpdateDNSRecord(zoneID, id, cloudflare.DNSRecord{Content: new_ip})
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Info("DDNS update")
+		log.Info("DDNS update success")
+	} else {
+		log.Infof("new_ip:%s,old_ip:%s", new_ip, ip)
 	}
 }
 
 func main() {
+	update_time := os.Getenv("update_time")
+	time, err := strconv.ParseUint(update_time, 0, 64)
+	if err != nil {
+		log.Fatal(err)
+	}
 	var ip = getip().Ip
-	gocron.Every(5).Minutes().Do(DDNS, ip)
+	log.Info("task start")
+	gocron.Every(time).Minute().Do(DDNS, ip)
 	<-gocron.Start()
 }
